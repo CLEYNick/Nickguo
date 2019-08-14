@@ -1,0 +1,341 @@
+教学环境介绍
+
+• 每个学员机上有三台预先配置好的虚拟机
+– server —— 作为练习用服务器
+– desktop —— 作为练习用客户机
+– classroom —— 提供网关/DNS/软件素材等资源
+
+
+ 优先虚拟机classroom开机
+
+真机上使用rht-vmctl辅助工具
+]# rht-vmctl reset classroom  //先重置资源服务器
+]# rht-vmctl reset server
+]# rht-vmctl reset desktop    //再重置答题虚拟机
+
+#################################################
+LVM逻辑卷
+综合分区:
+图形添加一块100G硬盘,划分3个主分区,一个扩展分区,三个逻辑分区
+[root@server0 ~]# lsblk
+[root@server0 ~]# fdisk /dev/vdc
+   n 创建主分区--->回车--->回车---->回车---->在last结束时 +10G
+         连续划分三个主分区
+   p 查看分区表
+   n 创建扩展分区 
+          ----->回车---->起始回车----->结束回车   将所有空间给扩展分区
+   p 查看分区表
+   n 创建逻辑分区----->起始回车------>结束+10G
+   n 创建逻辑分区----->起始回车------>结束+10G
+   n 创建逻辑分区----->起始回车------>结束+10G
+   p 查看分区表
+   w 保存并退出
+[root@server0 ~]# lsblk
+#################################################
+LVM逻辑卷
+   1.整合分散的空间(分区或整个磁盘)
+   2.空间的可以扩大
+
+– 零散空闲存储 ---- 整合的虚拟磁盘 ---- 虚拟的分区
+
+物理卷(pv)
+Physical Volume
+卷组(vg)
+Volume Group
+逻辑卷(lv)
+Logical Volume
+
+  将众多的物理卷,整合成卷组,再从卷组中划分逻辑卷
+
+LVM管理工具集
+  功能 		物理卷管理 	卷组管理 	  逻辑卷管理
+ Scan 扫描 	 pvscan 		vgscan 	  lvscan
+ Create 创建 	 pvcreate 	vgcreate   lvcreate
+ Display 显示	 pvdisplay 	vgdisplay  lvdisplay
+ Remove 删除 	 pvremove 	vgremove   lvremove
+ Extend 扩展 	 / 			vgextend   lvextend
+##################################################
+一 制作逻辑卷
+ successfully(成功)
+1.制作卷组
+  命令格式: vgcreate 卷组名  设备路径
+
+]# vgcreate systemvg  /dev/vdb /dev/vdc1
+
+]# vgs  #查看卷组信息
+]# pvs  #查看物理卷信息
+
+2.创建逻辑卷
+ 命令格式:lvcreate -L 大小  -n 逻辑卷名称    基于卷组名
+
+]# lvcreate  -L  16G   -n    vo      systemvg 
+]# lvs    #查看逻辑卷信息
+]# vgs
+]# ls /dev/systemvg/vo      #查看逻辑卷设备文件
+]# ls -l /dev/systemvg/vo
+
+3.逻辑卷的使用
+]# mkfs.xfs  /dev/systemvg/vo  #格式化文件系统
+]# blkid /dev/systemvg/vo    #查看文件系统
+
+]# vim /etc/fstab 
+/dev/systemvg/vo /mylv xfs defaults 0 0
+
+]# mkdir /mylv
+]# mount -a     #测试是否书写正确
+]# df -h        #显示正在挂载设备的使用情况   
+
+##############################################
+逻辑卷的扩展
+
+一 卷组有足够的剩余空间              
+1.扩展空间
+[root@server0 ~]# lvs
+[root@server0 ~]# vgs
+[root@server0 ~]# lvextend -L 18G /dev/systemvg/vo 
+[root@server0 ~]# lvs
+
+2.文件系统的扩展
+     扩展ext4文件系统: resize2fs                 
+     扩展xfs文件系统:  xfs_growfs  
+[root@server0 ~]# df  -h
+[root@server0 ~]# xfs_growfs /dev/systemvg/vo 
+[root@server0 ~]# df  -h
+
+
+二  卷组没有足够的剩余空间
+1.扩展卷组空间
+]# vgextend  systemvg  /dev/vdc2   /dev/vdc3
+]# vgs
+2.扩展逻辑卷空间
+[root@server0 ~]# lvs
+[root@server0 ~]# vgs
+[root@server0 ~]# lvextend -L 25G /dev/systemvg/vo 
+[root@server0 ~]# lvs
+3.文件系统的扩展
+[root@server0 ~]# df  -h
+[root@server0 ~]# xfs_growfs /dev/systemvg/vo 
+[root@server0 ~]# df  -h
+
+##############################################
+了解:逻辑卷也可以做缩小  首先缩小文件系统,在缩减空间
+       ext4支持缩小
+       xfs不支持缩小
+
+补充内容: 卷组划分空间的单位  PE
+         默认 1PE=4MB
+
+[root@server0 ~]# vgdisplay systemvg  #显示卷组详细信息
+  PE Size               4.00 MiB
+
+
+ 创建一个逻辑卷名为lvredhat,大小为250M 
+]# vgchange -s 1M systemvg 
+
+]# vgdisplay systemvg 
+]# lvcreate -L 250M -n lvtest  systemvg 
+]# lvs
+
+ 修改PE的大小为1M
+ 创建一个逻辑卷为500个PE组成
+ 逻辑卷名为lvtest
+
+  -l:PE的个数
+
+]# vgchange -s 1M systemvg   #修改PE的大小
+
+]# vgdisplay systemvg   #查看卷组详细信息,PE的大小
+
+]# lvcreate -l 500 -n lvtest  systemvg 
+]# lvs
+################################################
+逻辑卷的删除:
+     首先删除逻辑卷,然后在删除卷组(基于该卷组没有任何的逻辑卷)
+
+[root@server0 ~]# lvremove /dev/systemvg/lvredhat 
+Do you really want to remove active logical volume lvredhat? [y/n]: y
+  Logical volume "lvredhat" successfully removed
+[root@server0 ~]# lvs
+
+
+[root@server0 ~]# lvremove /dev/systemvg/vo 
+  Logical volume systemvg/vo contains a filesystem in use.
+[root@server0 ~]# umount /mylv/
+[root@server0 ~]# lvremove /dev/systemvg/vo 
+Do you really want to remove active logical volume vo? [y/n]: y
+  Logical volume "vo" successfully removed
+[root@server0 ~]# lvs
+
+#################################################
+[root@server0 ~]# vgs
+  VG       #PV #LV #SN Attr   VSize  VFree 
+  systemvg   4   0   0 wz--n- 39.98g 39.98g
+[root@server0 ~]# vgremove systemvg 
+  Volume group "systemvg" successfully removed
+[root@server0 ~]# vgs
+
+#################################################
+查找文件
+• 根据预设的条件递归查找对应的文件
+– find [目录] [条件1] [-a|-o] [条件2] ...
+– 常用条件表示:
+	-type 类型(f、d、l)
+	-name "文档名称"
+	-size +|-文件大小(k、M、G)
+	-user 用户名
+	-mtime 根据文件修改时间
+################################################
+
+	-type 类型(f文件、d目录、l快捷方式)
+	-name '文档名称'
+[root@server0 ~]# find /boot/ -type d 
+[root@server0 ~]# find /boot/ -type f
+[root@server0 ~]# find /boot/ -type l
+[root@server0 ~]# ls /boot/grub/menu.lst 
+[root@server0 ~]# ls -l /boot/grub/menu.lst
+
+[root@server0 ~]# find /etc/ -name 'passwd'
+[root@server0 ~]# find /etc/ -name '*tab'
+[root@server0 ~]# find /etc/ -name '*tab*'
+[root@server0 ~]# find /etc/ -name '*.conf'
+
+[root@server0 ~]# mkdir /root/nsd01
+[root@server0 ~]# mkdir /root/nsd02
+[root@server0 ~]# touch /root/nsd03.txt
+[root@server0 ~]# find /root/ -name 'nsd*'
+
+]# find /root/ -name 'nsd*' -a  -type f
+
+]# find /root/ -name  'nsd*'  -type  f
+]# find /root/ -name  'nsd*'  -type  d
+
+################################################
+	-size +或-文件大小(k、M、G)
+	-user 用户名      #按照数据的所有者进行查找
+
+[root@server0 ~]# find /boot/ -size +10M  #大于10M的
+[root@server0 ~]# find /boot/ -size -10M
+[root@server0 ~]# find /boot/ -size +300k
+
+ /proc:不占用磁盘空间,占用内存空间
+
+[root@server0 ~]# find  /  -user student
+[root@server0 ~]# find  /home  -user student
+
+#################################################
+	-mtime 根据文件修改时间                         
+	-mtime +10  #10天之前的数据
+	-mtime -10  #最近10天之内的数据
+
+[root@server0 ~]# find /root/ -mtime +1000
+[root@server0 ~]# find /root/ -mtime +10
+[root@server0 ~]# find /root/ -mtime -2
+
+三个月以前:
+[root@server0 ~]# find /root/ -mtime +90
+
+#################################################
+
+find扩展使用
+• 使用find命令的 -exec 操作
+– find .. .. -exec 处理命令 {} \;
+– 优势:以 {} 代替每一个结果,逐个处理,遇 \; 结束
+
+]# find /boot/ -size +10M   
+]# find /boot/ -size +10M     -exec cp  {}  /opt  \;
+]# ls /opt/
+
+]# find /root/  -name 'nsd*'  
+]# find /root/  -name 'nsd*'   -exec rm  -rf  {}  \;
+]# find /root/  -name 'nsd*'
+
+案例4:查找并处理文件
+• 使用find命令完成以下任务
+– 找出所有用户 student 拥有的文件
+– 把它们拷贝到 /root/findfiles/ 文件夹中
+
+[root@server0 ~]# mkdir /root/findfiles
+[root@server0 ~]# find /  -user student  -type f
+
+]# find /  -user student  -type f  -exec cp {} /root/findfiles/  \;
+
+]# ls -A /root/findfiles/
+
+################################################
+grep用法
+显示文件的有效信息(去除注释行,去除空行)
+]# grep -v  ^#  /etc/login.defs 
+]# grep -v  ^#  /etc/login.defs   |  grep -v  ^$
+
+]# grep -v ^# /etc/login.defs   |  grep -v ^$  > /opt/1.txt
+]# less  /opt/1.txt
+
+在Linux大多数配置文件中,以#开头的行为注释行
+
+    ^$ : 匹配空行
+################################################
+NTP时间同步
+查看修改系统时间:
+[root@server0 ~]# date
+[root@server0 ~]# date -s '年-月-日   时:分:秒'
+
+[root@server0 ~]# date -s '2008-10-1  12:10:1'
+2008年 10月 01日 星期三 12:10:01 CST
+[root@server0 ~]# date
+
+NTP网络时间协议
+• Network Time Protocol
+– NTP服务器为客户机提供标准时间
+– NTP客户机需要与NTP服务器保持沟通
+
+NTP服务器:虚拟机classroom提供标准时间
+
+NTP客户机:虚拟机server同步时间
+1.安装chrony客户端软件,寻找时间服务器
+[root@server0 ~]# yum -y install chrony
+[root@server0 ~]# rpm -q chrony
+chrony-1.29.1-1.el7.x86_64
+
+2.修改配置文件
+[root@server0 ~]# vim /etc/chrony.conf
+ #server 0.rhel.pool.ntp.org iburst
+ #server 1.rhel.pool.ntp.org iburst
+ #server 2.rhel.pool.ntp.org iburst
+ server  classroom.example.com  iburst  #指定服务端
+
+3.重启程序(重启服务) 
+daemon
+英 [ˈdiːmən] 美 [ˈdiːmən]
+(古希腊神话中的)半神半人精灵
+
+]# systemctl restart chronyd  #重启程序
+]# systemctl enable chronyd  #设置开机自启动
+
+4.测试验证:                                                
+[root@server0 ~]# date -s '2000-10-1'
+2000年 10月 01日 星期日 00:00:00 CST
+[root@server0 ~]# systemctl restart chronyd
+[root@server0 ~]# date
+2000年 10月 01日 星期日 00:00:13 CST
+[root@server0 ~]# date
+2019年 07月 05日 星期五 16:21:59 CST
+
+#############################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

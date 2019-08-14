@@ -1,0 +1,384 @@
+重定向输出操作:将前面的命令的输出,写入到文本文件
+  >:覆盖重定向
+  >>:追加重定向
+[root@1906 ~]# ls --help  > /opt/ls.txt
+[root@1906 ~]# ls /opt/
+[root@1906 ~]# less /opt/ls.txt 
+
+[root@1906 ~]# hostname
+[root@1906 ~]# hostname > /opt/ls.txt 
+[root@1906 ~]# cat /opt/ls.txt
+
+[root@1906 ~]# hostname >> /opt/ls.txt
+[root@1906 ~]# cat /opt/ls.txt
+
+[root@1906 ~]# hostname >> /opt/ls.txt 
+[root@1906 ~]# cat /opt/ls.txt
+
+[root@1906 ~]# head  -2 /etc/passwd       
+[root@1906 ~]# head  -2 /etc/passwd  >  /opt/ls.txt
+
+[root@1906 ~]# cat /opt/ls.txt 
+
+[root@1906 ~]# echo 123456
+
+[root@1906 ~]# echo 123456 >> /opt/ls.txt  #非交互式
+[root@1906 ~]# cat /opt/ls.txt
+
+[root@1906 ~]# echo hello >> /opt/ls.txt  #非交互式
+[root@1906 ~]# cat /opt/ls.txt
+
+##################################################
+ 管道操作  |  : 
+      将前面命令的输出,交由后面命令处理,作为后面命令的参数
+
+  显示/etc/passwd的8至12行内容
+[root@1906 ~]# head -12 /etc/passwd
+[root@1906 ~]# head -12 /etc/passwd | tail -5
+ 
+[root@1906 ~]# cat -n /etc/passwd 
+[root@1906 ~]# cat -n /etc/passwd  |  head -12
+[root@1906 ~]# cat -n /etc/passwd |  head -12  | tail -5
+
+[root@1906 ~]# ifconfig | less
+[root@1906 ~]# ifconfig | head -2
+
+####################################################
+
+管理用户和组   
+  
+   用户帐号:  1.登录系统    2.确认身份,实现权限控制
+   组:方便管理用户
+
+   唯一标识:  UID   GID
+
+   组分类: 基本组(私有组)     附加组(从属组)
+   一个用户至少属于一个组
+
+[root@1906 ~]# useradd nsd01
+              组:nsd01
+
+              组: cw  js  xs
+
+添加用户
+用户基本信息存放在 /etc/passwd文件(系统级配置文件)
+[root@1906 ~]# head -1 /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+用户名:密码占位符:UID:基本组GID:描述信息:家目录:解释器程序
+
+• 使用 useradd 命令
+– useradd [选项]... 用户名
+
+• 常用命令选项
+– -u 用户id、-d 家目录路径、-s 登录解释器、-G 附加组
+
+[root@1906 ~]# useradd -u 1500 nsd01   #创建用户指定UID
+[root@1906 ~]# id nsd01
+
+[root@1906 ~]# useradd nsd02
+[root@1906 ~]# id nsd02         #查询nsd02用户基本的信息
+
+[root@1906 ~]# ls /home/
+
+]# useradd -d /opt/abc  nsd05    #创建用户指定家目录
+]# ls /opt/
+
+]# useradd -u 2000 -d /opt/aa  nsd08    
+]# ls /opt/                                 
+
+
+用户名:密码占位符:UID:基本组GID:描述信息:家目录:解释器程序
+
+-s:指定解释器程序
+
+ /sbin/nologin:禁止用户登录系统
+[root@1906 ~]# useradd  -s /sbin/nologin  nsd13
+[root@1906 ~]# id nsd13
+
+[root@1906 ~]# grep nsd13  /etc/passwd
+
+[root@1906 ~]# useradd  -s /sbin/nologin  nsd14
+[root@1906 ~]# id nsd14
+
+[root@1906 ~]# grep  nsd14  /etc/passwd
+
+-G:指定附加组(从属组)
+[root@1906 ~]# groupadd tedu   #创建组tedu
+
+[root@1906 ~]# useradd nsd15
+[root@1906 ~]# id nsd15
+
+[root@1906 ~]# useradd -G tedu nsd16  #创建用户指定附加组
+[root@1906 ~]# id nsd16
+
+##################################################
+设置登录密码
+  复杂密码:   3/4原则  字母  数字  大小写  特殊符号
+
+
+• 使用 passwd 命令
+
+[root@1906 ~]# useradd nsd17
+[root@1906 ~]# passwd nsd17
+更改用户 nsd17 的密码 。
+新的 密码：                  #输入新的密码
+重新输入新的 密码：     #重新输入新的密码
+passwd：所有的身份验证令牌已经成功更新
+[root@1906 ~]# su - nsd17   #命令行临时切换身份   
+[nsd17@1906 ~]$ passwd 
+更改用户 nsd17 的密码 。
+为 nsd17 更改 STRESS 密码。
+（当前）UNIX 密码：              #输入旧的密码
+新的 密码：
+重新输入新的 密码：
+passwd：所有的身份验证令牌已经成功更新。
+[nsd17@1906 ~]$ exit   #回到root用户
+非交互式设置密码
+
+[root@1906 ~]# echo 123 | passwd --stdin nsd17
+
+[root@1906 ~]# echo redhat | passwd --stdin nsd17
+
+[root@1906 ~]# echo 123456 | passwd --stdin nsd17
+
+###################################################
+用户密码信息存放在 /etc/shadow 文件
+[root@1906 ~]# grep nsd17 /etc/shadow
+nsd17:$6$UJ1UmCDO$uxsebJRVxjfOTUngX3nfI21mYCrEYiiPZs6Q4FD5Op7kzEtF7f8
+u49XSm8AVGqm6X4Ny/pULXIKngkDIo7pSS1:18079:0:99999:7:::
+
+用户名:密码加密字符串:上一次修改密码的时间
+
+          上一次修改密码的时间:1970-1-1~2019-7-2  经历的天数
+
+####################################################
+修改用户属性
+• 使用 usermod 命令
+– usermod [选项]... 用户名
+
+• 常用命令选项
+– -u 用户id、-d 家目录路径、-s 登录解释器
+– -G 附加组
+
+[root@1906 ~]# useradd nsd19
+[root@1906 ~]# grep nsd19 /etc/passwd
+
+]# usermod -u 2500  -G tedu   -s /sbin/nologin          -d   /mnt/abc   nsd19
+
+[root@1906 ~]# grep nsd19 /etc/passwd
+[root@1906 ~]# id nsd19
+
+###################################################
+删除用户
+• 使用 userdel 命令
+– userdel [-r] 用户名
+
+   -r:连同家目录一并删除
+
+[root@1906 ~]# userdel nsd01
+[root@1906 ~]# id nsd01
+[root@1906 ~]# ls /home/
+
+[root@1906 ~]# userdel -r nsd02
+[root@1906 ~]# id nsd02
+[root@1906 ~]# ls /home/
+
+####################################################
+管理组账号
+添加组
+组基本信息存放在 /etc/group文件
+
+• 使用 groupadd 命令
+– groupadd [-g 组ID] 组名
+
+[root@1906 ~]# groupadd tarena
+[root@1906 ~]# grep tarena /etc/group
+tarena:x:2010:
+组名:组的密码占位符:组GID:组成员列表
+
+[root@1906 ~]# useradd natasha
+[root@1906 ~]# useradd dc
+[root@1906 ~]# useradd harry
+[root@1906 ~]# useradd jack
+
+管理组成员
+• 使用 gpasswd 命令
+– gpasswd -a  用户名   组名
+– gpasswd -d  用户名   组名
+
+[root@1906 ~]# gpasswd -a natasha tarena     
+[root@1906 ~]# grep tarena /etc/group
+
+[root@1906 ~]# gpasswd -a dc tarena
+[root@1906 ~]# grep tarena /etc/group
+
+[root@1906 ~]# gpasswd -a jack tarena
+[root@1906 ~]# grep tarena /etc/group
+
+[root@1906 ~]# gpasswd -d dc tarena
+[root@1906 ~]# grep tarena /etc/group
+
+[root@1906 ~]# gpasswd -d natasha tarena
+[root@1906 ~]# grep tarena /etc/group
+
+####################################################
+删除组
+• 使用 groupdel 命令
+– groupdel 组名
+
+
+####################################################
+案例1:配置用户和组账号
+• 新建用户 alex,其用户ID为3456,密码是flectrag
+[root@1906 ~]# useradd -u 3456 alex
+[root@1906 ~]# echo flectrag  |  passwd --stdin alex
+• 一个名为 adminuser 的组
+[root@1906 ~]# groupadd adminuser
+• 为 natasha 的用户其属于adminuser组,这个组是该用户的从属组
+[root@1906 ~]# gpasswd -a natasha adminuser
+[root@1906 ~]# id natasha
+• 为 harry 的用户,其属于adminuser组,这个组是该用户的从属组
+[root@1906 ~]# gpasswd -a harry adminuser
+[root@1906 ~]# id harry
+• 为 sarah的用户,其在系统中没有可交互的Shell
+[root@1906 ~]# useradd -s /sbin/nologin sarah
+• natasha 、harry、sarah 的密码都要设置为 flectrag
+####################################################
+
+tar备份与恢复
+
+       1.整合分散的数据   2.减小空间占用
+
+归档和压缩
+• 归档的含义
+– 将许多零散的文件整理为一个文件
+– 文件总的大小基本不变
+
+• 压缩的含义
+– 按某种算法减小文件所占用空间的大小
+– 恢复时按对应的逆向算法解压
+
+常见的压缩格式及命令工具:
+	.gz ---> gzip
+	.bz2 ---> bzip2
+	.xz ---> xz
+
+• tar 集成备份工具
+– -c:创建归档
+– -x:释放归档
+– -f:指定归档文件名称
+– -z、-j、-J:调用 .gz、.bz2、.xz格式的工具进行处理
+– -t:显示归档中的文件清单
+– -C(大写):指定释放路径
+
+制作tar包格式:
+ tar  选项     /路径/压缩包的名字      /路径/被压缩的源数据 .....
+]# tar -zcf  /opt/file.tar.gz    /home/   /etc/passwd 
+]# ls /opt/
+]# tar -jcf  /opt/abc.tar.bz2     /home/  /etc/passwd
+]# ls /opt/
+]# tar -Jcf  /opt/nsd.tar.xz      /home/  /etc/passwd
+]# ls /opt/
+
+解包格式:                                                                 
+ tar  选项     /路径/压缩包的名字       释放的路径
+
+]# tar -xf /opt/file.tar.gz   -C  /mnt/
+]# ls /mnt/
+]# ls /mnt/etc/
+]# ls /mnt/home/
+
+]# mkdir /test
+]# tar -xf /opt/abc.tar.bz2   -C  /test
+]# ls /test/
+
+###################################################
+案例2:创建一个备份包
+使用 tar 工具完成以下备份任务:
+– 创建一个名为 /root/backup.tar.bz2 的归档文件
+– 其中包含 /usr/local 目录中的内容
+– tar 归档必须使用 bzip2 进行压缩
+
+]# tar -jcf /root/backup.tar.bz2   /usr/local/
+]# ls /root/
+
+]# tar -tf  /root/backup.tar.bz2    #查看tar包内容
+
+##################################################
+cron计划任务
+
+cron任务概述
+• 用途:按照设置的时间间隔为用户反复执行某一项固定的系统任务
+• 软件包:cronie、crontabs
+• 系统服务:crond
+
+• 日志文件:/var/log/cron
+
+
+管理计划任务策略
+• 使用 crontab 命令
+– 编辑:crontab -e [-u 用户名]
+– 查看:crontab -l [-u 用户名]
+– 清除:crontab -r [-u 用户名]
+
+
+如何编写任务记录
+• 配置格式可参考 /etc/crontab 文件
+   分    时    日    月   周     任务命令行(绝对路径)
+   *      *    *    *     *      #每分钟都执行
+
+   30  23   *     *    *      #每天晚上11:30
+
+   30  23   *     *    5      #每周的周五晚上11:30
+
+   30  23   *     *    1,3,5      #每周的周五,周一,周三 晚上11:30
+   30  23   *     *    1-5         #每周的周一至周五 晚上11:30
+   1    */2   *   *      *          #每两个小时
+  分   时    日   月      周
+   1    8     1     *       2           #每周的周二或每月的一号
+
+	*:匹配范围内任意时间
+	,:分隔多个不连续的时间点
+	-:指定连续时间范围
+	/n:指定时间频率,每n ...
+
+
+ 利用root用户,每分钟记录当前系统时间,写入到/opt/time.txt
+[root@1906 ~]# date    #显示系统时间
+
+[root@1906 ~]# date >> /opt/time.txt
+[root@1906 ~]# cat /opt/time.txt
+
+[root@1906 ~]# crontab -e 
+*  *  *  *  *    date >> /opt/time.txt
+
+[root@1906 ~]# crontab -l -u root
+*  *  *  *  *    date >> /opt/time.txt
+
+###################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
